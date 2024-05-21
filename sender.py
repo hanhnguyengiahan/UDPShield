@@ -85,6 +85,8 @@ def restart_timer(control, buffer, rto):
         print('STOP timer: ')
 
 def recv_thread(control, buffer, rto, max_win, rlp):
+    global seqno
+    global sending_segtype
     while control.is_alive:
         try:
             nread = control.socket.recv(BUF_SIZE)
@@ -97,7 +99,8 @@ def recv_thread(control, buffer, rto, max_win, rlp):
         
         segtype = int.from_bytes(nread[:2], "big")
         recv_seqno = int.from_bytes(nread[2:4], "big")
-        
+        print("recv_seqno", recv_seqno)
+        print("current state: ", control.sender_state)
         control.lock.acquire()
         
         if control.last_segment_seqno == recv_seqno:
@@ -110,12 +113,19 @@ def recv_thread(control, buffer, rto, max_win, rlp):
 
         # Update sender state based on segment type
         if control.sender_state == State.SYN_SENT:
-            if (1):
+            print("hiiiiii")
+            # fixxxxxxxxxxx later to drop rlp
+            if sending_segtype == SegmentType.SYN:
+                print("drop syn-ack")
                 log_message("sender", SegmentType(segtype), recv_seqno, 0, "drp", control.start_time, False)
-                control.drop_syn = True
+                # fix later
+                sending_segtype = SegmentType.DATA
+                control.lock.release()
                 continue
             log_message("sender", SegmentType(segtype), recv_seqno, 0, "rcv", control.start_time, False)
+            
             control.sender_state = State.EST
+            seqno += 1
             
         elif control.sender_state == State.EST:
             index = -1
@@ -210,9 +220,10 @@ def timer_thread(control, buffer, rto):
     
 
     global seqno
-    if (control.drop_syn):
+    global sending_segtype
+    if sending_segtype == SegmentType.SYN:
+        print("timeout retransmit a syn")
         send_syn(control, False)
-        control.drop_syn = False
 
     elif (control.drop_fin):
         send_fin(control)
@@ -254,19 +265,17 @@ def send_syn(control, is_first):
     if (is_first):
         control.start_time = time.time()*1000
         control.sender_state = State.SYN_SENT
-        if (control.drop_syn):
-            log_message("sender", segtype, seqno, 0, "drp", 0.00, True)
-        else:
-            log_message("sender", segtype, seqno, 0, "snd", 0.00, True)
+        
+        log_message("sender", segtype, seqno, 0, "snd", 0.00, True)
            
-            segment_sent = control.socket.send(syn_segment)
-            seqno += 1
+        segment_sent = control.socket.send(syn_segment)
 
     else: 
+        print("retransmit a syn")
         control.sender_state = State.SYN_SENT
         log_message("sender", segtype, seqno, 0, "snd", control.start_time, False)
         segment_sent = control.socket.send(syn_segment)
-        seqno += 1
+        
     
 def send_data(flp, control, num_times_to_send, file, buffer):
     global seqno
@@ -375,7 +384,9 @@ if __name__ == "__main__":
     lock = threading.Lock() 
     isn = 23
     global seqno
+    global sending_segtype
 
+    sending_segtype = SegmentType.SYN
     seqno = isn
     # Create a control block for the sender program.
     control = Control(sender_port, receiver_port, sock, rto, 0.00, None, -1, lock, isn)
@@ -389,8 +400,8 @@ if __name__ == "__main__":
     receiver.start()
     
     if (is_to_be_dropped(flp)):
-        control.drop_syn = True
-    else: control.drop_syn = False
+        log_message("sender", sending_segtype, seqno, 0, "drp", 0.00, True)
+    
 
     control.timer.start()
 
@@ -410,7 +421,7 @@ if __name__ == "__main__":
 
     while control.sender_state != State.EST:
         pass
-
+    # segtype = SegmentType.DATA
     num_times_to_send = int(max_win / MSS)
     file = open(file_to_send, 'rb')
     y = 0
