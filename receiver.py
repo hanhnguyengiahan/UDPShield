@@ -14,7 +14,7 @@ import socket
 import sys
 from enum import Enum
 import struct
-from UDPShield.helper import print_buff, Control, SegmentType, State, log_message, create_segment, unpack_segment, ReceiverSegment, find_expected_segno, write_to_file, remove_all_in_recv_buffer_if_full
+from helper import print_buff, Control, SegmentType, State, log_message, create_segment, unpack_segment, ReceiverSegment, find_expected_segno, write_to_file, remove_all_in_recv_buffer_if_full
 import time
 
 NUM_ARGS = 4  # Number of command-line arguments
@@ -96,9 +96,7 @@ if __name__ == "__main__":
         with open(file_received, 'w') as file:
             pass
         while True:
-            buf = s.recv(BUF_SIZE)
-            
-                   
+            buf = s.recv(BUF_SIZE)      
             segtype, seqno, data = unpack_segment(buf)
             if (segtype != SegmentType.SYN):
                 log_message("receiver", segtype, seqno, MSS, "rcv", start_time, False)  
@@ -126,6 +124,7 @@ if __name__ == "__main__":
 
                     # buffer the receiving one
                     receive_buffer[final_index] = ReceiverSegment(seqno, segtype, data)
+
                     # send back the previous ack
                     log_message("receiver", SegmentType.ACK, expected_seqno, 0, "snd", start_time, False)
                     segment = create_segment(SegmentType.ACK, expected_seqno, '')

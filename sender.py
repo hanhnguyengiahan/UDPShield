@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-
-
 import random
 import socket
 import sys
 import threading
 import time
-from UDPShield.helper import Control, SegmentType, State, log_message, create_segment, SenderSegment, is_to_be_dropped, print_buff
+from helper import Control, SegmentType, State, log_message, create_segment, SenderSegment, is_to_be_dropped, print_buff
 # generate random integer values
 from numpy.random import seed
 from numpy.random import randint
 import array as arr
+
 NUM_ARGS  = 7  # Number of command-line arguments
 BUF_SIZE  = 4  # Size of buffer for receiving messages
 MAX_SLEEP = 2  # Max seconds to sleep before sending the next message
 MSS = 1000
+
 segno = -1
+
 def parse_run_time(run_time_str, min_run_time=1, max_run_time=60):
     """Parse the run_time argument from the command-line.
 
@@ -64,8 +65,8 @@ def setup_socket(sender_port, receiver_port,timeout=None):
         sock.setblocking(True)
     else:
         sock.settimeout(timeout)
-
     return sock
+
 def restart_timer(control, buffer, rto):
     # if there are currently any unACKed segments
     has_unACKed_segments = find_current_unACKed_segments(buffer)
@@ -83,7 +84,7 @@ def restart_timer(control, buffer, rto):
         control.timer = None
         print('STOP timer: ')
 
-def recv_thread(control, buffer, rto, max_win):
+def recv_thread(control, buffer, rto, max_win, rlp):
     while control.is_alive:
         try:
             nread = control.socket.recv(BUF_SIZE)
@@ -107,11 +108,12 @@ def recv_thread(control, buffer, rto, max_win):
                 control.timer.cancel()
                 control.timer = None
 
-
-                
-       
         # Update sender state based on segment type
         if control.sender_state == State.SYN_SENT:
+            if (1):
+                log_message("sender", SegmentType(segtype), recv_seqno, 0, "drp", control.start_time, False)
+                control.drop_syn = True
+                continue
             log_message("sender", SegmentType(segtype), recv_seqno, 0, "rcv", control.start_time, False)
             control.sender_state = State.EST
             
@@ -121,9 +123,11 @@ def recv_thread(control, buffer, rto, max_win):
                 if buffer[i] and (buffer[i].seqno + len(buffer[i].data)) % 2**16 == recv_seqno:
                     index = i
                     break
-            # if (is_to_be_dropped(rto)):
+            
+            # if (is_to_be_dropped(rlp)):
             #     log_message("sender", SegmentType(segtype), recv_seqno, 0, "drp", control.start_time, False)
             #     continue
+            
             log_message("sender", SegmentType(segtype), recv_seqno, 0, "rcv", control.start_time, False)
             print("buffer bf: ", end='')
             print_buff(buffer)
@@ -359,7 +363,7 @@ if __name__ == "__main__":
     max_win = int(sys.argv[4])
     rto = parse_run_time(sys.argv[5])
     flp = float(sys.argv[6])
-    rlp = sys.argv[7]
+    rlp = float(sys.argv[7])
 
 
     # declare a buffer where each element has type of Segment 
@@ -381,7 +385,7 @@ if __name__ == "__main__":
     # isn = random.randrange(2**16)
     
     # Start the receiver and timer threads.
-    receiver = threading.Thread(target=recv_thread, args=(control, buffer, rto, max_win))
+    receiver = threading.Thread(target=recv_thread, args=(control, buffer, rto, max_win, rlp))
     receiver.start()
     
     if (is_to_be_dropped(flp)):

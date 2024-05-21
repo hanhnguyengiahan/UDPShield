@@ -27,13 +27,14 @@ class SenderSegment:
     seqno: int
     segtype: SegmentType
     data: bytes
-    # recv_ack: bool = False
+
 @dataclass
 class ReceiverSegment:
     """"Segment Data structure to store in receiver buffer"""  
     seqno: int
     segtype: SegmentType
     data: int
+
 @dataclass
 class Control:
     """Control block: parameters for the sender program."""
@@ -66,14 +67,7 @@ def log_message(user, type, seqno, num_bytes, action, start_time, first):
             timestamp = round(time.time()*1000 - start_time, 2)
             # print("timestamp:", timestamp)
             file.write(f"{action:<3}     {timestamp:<11} {type.name:<4}   {seqno:<5} {num_bytes}\n")
-    # elif type == SegmentType.SYN and drop_segment:
-    #     with open(log_file, 'a') as file:
-    #         file.write(f"{action} 0.00 {type.name} {seqno} 0\n")
     
-        # Append to the existing log file
-        
-            # print("action: ", action)
-            # print("start time ", start_time)
             
 def print_buff(buffer):
     for segment in buffer:
@@ -145,6 +139,7 @@ def write_to_file(max_win, receive_buffer, file_received):
                 with open(file_received, 'a') as file:
                     file.write(chr(receive_buffer[i].data))
             return file
+
 def is_to_be_dropped(probability):
     # random.seed(1)
     random_value = random.random()
