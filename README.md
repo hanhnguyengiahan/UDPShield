@@ -3,7 +3,7 @@
 
   Overview
   --------
-
+ This project involves implementing a reliable transport protocol (STP) over UDP, mimicking key TCP features such as sequence numbers, acknowledgments (ACKs), timeouts, and sliding window protocol. Unlike TCP, UDP is unreliable, so STP ensures end-to-end reliable data transfer despite packet loss.
   
   Description
   -----------
@@ -12,14 +12,21 @@
   Features
   --------
   
-  - Parsing command-line arguments
-  - Communication via UDP sockets
-  - Using a "connected" UDP socket, to send() and recv()
-  - Conversion between host byte order and network byte order for 
-    multi-byte fields.
-  - Timers (sender only)
-  - Multi-threading (sender only)
-  - Simple logging
+  Asymmetric communication:
+
+    - Sender → Receiver: Transmits data packets.
+    
+    - Receiver → Sender: Sends ACKs for received packets.
+
+  Reliable Data Transfer:
+  
+    - Sliding window protocol (combining Go-Back-N & Selective Repeat).
+  
+    - Retransmissions using timeouts & duplicate ACKs.
+  
+    - Connection handling (SYN for setup, FIN for teardown).
+  
+    - Packet loss simulation to test reliability.
   
   
   Usage
